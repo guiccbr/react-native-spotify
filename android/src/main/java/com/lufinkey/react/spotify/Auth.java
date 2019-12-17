@@ -22,12 +22,17 @@ import java.util.HashMap;
 
 public class Auth
 {
+ 	private static final String spotifyTokenEndpoint = "https://accounts.spotify.com/api/token";
+
 	public ReactApplicationContext reactContext = null;
 
 	public String sessionUserDefaultsKey = null;
 
 	private String clientID = null;
+	private String clientSecret = null;
 	private String tokenRefreshURL = null;
+	private String redirectURL = null;
+
 
 	private SessionData session = null;
 
@@ -40,8 +45,16 @@ public class Auth
 		return clientID;
 	}
 
+	public String getClientSecret() {
+		return clientSecret;
+	}
+
 	public String getTokenRefreshURL() {
 		return tokenRefreshURL;
+	}
+
+	public String getRedirectURL() {
+		return redirectURL;
 	}
 
 	public SessionData getSession() {
@@ -59,7 +72,9 @@ public class Auth
 		session = SessionData.from(prefs);
 		if(session != null) {
 			clientID = options.clientID;
+			clientSecret = options.clientSecret;
 			tokenRefreshURL = options.tokenRefreshURL;
+			redirectURL = options.redirectURL;
 		}
 	}
 
@@ -115,14 +130,11 @@ public class Auth
 	}
 
 	public boolean canRefreshSession() {
-		if(session != null && session.refreshToken != null && tokenRefreshURL != null) {
+		if(session != null && session.refreshToken != null && (tokenRefreshURL != null || clientSecret != null)) {
 			return true;
 		}
 		return false;
 	}
-
-
-
 
 	private static HashMap<String,String> getCookies(android.webkit.CookieManager cookieManager, String url) {
 		String bigcookie = cookieManager.getCookie(url);
@@ -218,8 +230,16 @@ public class Auth
 		WritableMap params = Arguments.createMap();
 		params.putString("refresh_token", session.refreshToken);
 
+		String url = tokenRefreshURL;
+		if (tokenRefreshURL == null) {
+			url = Auth.spotifyTokenEndpoint;
+			params.putString("grant_type", "refresh_token");
+			params.putString("client_secret", clientSecret);
+			params.putString("client_id", clientID);
+		}
+
 		// perform token refresh
-		performTokenURLRequest(tokenRefreshURL, Utils.makeQueryString(params), new Completion<JSONObject>() {
+		performTokenURLRequest(url, Utils.makeQueryString(params), new Completion<JSONObject>() {
 			@Override
 			public void onComplete(JSONObject response, SpotifyError error)
 			{
@@ -346,9 +366,18 @@ public class Auth
 		});
 	}
 
-	public static void swapCodeForToken(String code, String url, final Completion<SessionData> completion) {
+	public static void swapCodeForToken(String code, String swapTokenURL, String clientSecret, String clientID, String redirectURL, final Completion<SessionData> completion) {
 		WritableMap params = Arguments.createMap();
 		params.putString("code", code);
+
+		String url = swapTokenURL;
+		if (swapTokenURL == null) {
+			url = Auth.spotifyTokenEndpoint;
+			params.putString("grant_type", "authorization_code");
+			params.putString("redirect_uri", redirectURL);
+      params.putString("client_secret", clientSecret);
+			params.putString("client_id", clientID);
+		}
 
 		performTokenURLRequest(url, Utils.makeQueryString(params), new Completion<JSONObject>() {
 			@Override
