@@ -288,7 +288,7 @@ public class RNSpotifyModule extends ReactContextBaseJavaModule implements Playe
 
 
 	private void renewSessionIfNeeded(final Completion<Boolean> completion, boolean waitForDefinitiveResponse) {
-		if(auth.isLoggedIn() || auth.isSessionValid()) {
+		if(!auth.isLoggedIn() || auth.isSessionValid()) {
 			// not logged in or session does not need renewal
 			completion.resolve(false);
 		}
