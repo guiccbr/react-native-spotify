@@ -10,6 +10,22 @@
 
 @implementation RNSpotifyUtils
 
++(NSString*)makeJSONBody:(NSDictionary*)params {
+    NSMutableDictionary* stringDict = [NSMutableDictionary dictionary];
+    for(NSString* key in params) {
+        id value = [params objectForKey:key];
+        NSString* keyStr = [key stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet];
+        NSString* valueStr = (![value isKindOfClass:[NSNull class]]) ? (
+            [[value description] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]
+        ) : nil;
+        if(valueStr != nil) {
+            [stringDict setValue:valueStr forKey:keyStr];
+        }
+    }
+    NSError * err;
+    return [NSJSONSerialization dataWithJSONObject:stringDict options:0 error:&err];
+}
+
 +(NSString*)makeQueryString:(NSDictionary*)params {
 	NSMutableArray* parts = [NSMutableArray array];
 	for(NSString* key in params) {

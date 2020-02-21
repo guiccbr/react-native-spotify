@@ -14,7 +14,9 @@
 @property (nonatomic) NSURL* redirectURL;
 @property (nonatomic) NSArray<NSString*>* scopes;
 @property (nonatomic) NSURL* tokenSwapURL;
+@property (nonatomic) NSString* tokenSwapURLAuthorization;
 @property (nonatomic) NSURL* tokenRefreshURL;
+@property (nonatomic) NSString* tokenRefreshURLAuthorization;
 @property (nonatomic) NSDictionary* params;
 
 -(NSURL*)spotifyWebAuthenticationURLWithState:(NSString*)state;

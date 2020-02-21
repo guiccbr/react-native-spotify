@@ -23,7 +23,7 @@
 -(id)init {
 	if(self = [super init]) {
 		_session = nil;
-		
+
 		_renewingSession = NO;
 		_retryRenewalUntilResponse = NO;
 		_renewCallbacks = [NSMutableArray array];
@@ -41,6 +41,8 @@
 	if(_session != nil) {
 		_clientID = options.clientID;
 		_tokenRefreshURL = options.tokenRefreshURL;
+		_tokenRefreshURLAuthorization = options.tokenRefreshURLAuthorization;
+		_redirectURL = options.redirectURL;
 	}
 }
 
@@ -61,6 +63,7 @@
 	_session = session;
 	_clientID = options.clientID;
 	_tokenRefreshURL = options.tokenRefreshURL;
+	_tokenRefreshURLAuthorization = options.tokenRefreshURLAuthorization;
 	[self save];
 }
 
@@ -68,6 +71,7 @@
 	_session = nil;
 	_clientID = nil;
 	_tokenRefreshURL = nil;
+	_tokenRefreshURLAuthorization = nil;
 	[self save];
 }
 
@@ -146,7 +150,7 @@
 		[completion resolve:@NO];
 		return;
 	}
-	
+
 	// add completion to be called when the renewal finishes
 	if(completion != nil) {
 		if(waitForDefinitiveResponse) {
@@ -160,35 +164,37 @@
 			}
 		}
 	}
-	
+
 	dispatch_async(dispatch_get_main_queue(), ^{
 		// determine whether to retry renewal if a definitive response isn't given
 		if(waitForDefinitiveResponse) {
 			_retryRenewalUntilResponse = YES;
 		}
-		
+
 		// if we're already in the process of renewing the session, don't continue
 		if(_renewingSession) {
 			return;
 		}
 		_renewingSession = true;
-		
+
 		// create request body
 		NSDictionary* params = @{
-			@"refresh_token": _session.refreshToken
+			@"refresh_token": _session.refreshToken,
+			@"redirect_uri": _redirectURL
 		};
-		
+
 		// perform token refresh
-		[self.class performTokenURLRequestTo:_tokenRefreshURL params:params completion:[RNSpotifyCompletion onComplete:^(NSDictionary* result, RNSpotifyError* requestError) {
+		[self.class performTokenURLRequestTo:_tokenRefreshURL authorization:_tokenRefreshURLAuthorization params:params completion:[RNSpotifyCompletion onComplete:^(NSDictionary* result, RNSpotifyError* requestError) {
 			dispatch_async(dispatch_get_main_queue(), ^{
 				RNSpotifyError* error = requestError;
 				_renewingSession = NO;
-				
+
 				// determine if session was renewed
 				BOOL _renewed = NO;
 				if(error == nil && _session != nil && _session.refreshToken != nil) {
-					NSString* newAccessToken = result[@"access_token"];
-					NSNumber* expireSeconds = result[@"expires_in"];
+					NSDictionary* data = result[@"data"];
+					NSString* newAccessToken = data[@"access_token"];
+					NSNumber* expireSeconds = data[@"expires_in"];
 					if(_session.accessToken != nil) {
 						if(newAccessToken != nil && [newAccessToken isKindOfClass:[NSString class]] && expireSeconds != nil && [expireSeconds isKindOfClass:[NSNumber class]]) {
 							_session.accessToken = newAccessToken;
@@ -202,7 +208,7 @@
 						}
 					}
 				}
-				
+
 				// call renewal callbacks
 				NSArray<RNSpotifyCompletion<NSNumber*>*>* tmpRenewCallbacks;
 				@synchronized(_renewCallbacks) {
@@ -217,7 +223,7 @@
 						[completion resolve:@(_renewed)];
 					}
 				}
-				
+
 				// ensure an actual session renewal error (a reason to be logged out)
 				if(error != nil
 				   // make sure error code is not a timeout or lack of connection
@@ -228,12 +234,12 @@
 					   || [error.code isEqualToString:[RNSpotifyError httpErrorForStatusCode:599].code])) {
 					error = nil;
 				}
-				
+
 				// check if the session was renewed, or if it got a failure error
 				if(_renewed || error != nil) {
 					// renewal has reached a success or an error
 					_retryRenewalUntilResponse = NO;
-					
+
 					// call renewal callbacks
 					NSArray<RNSpotifyCompletion<NSNumber*>*>* tmpRenewUntilResponseCallbacks;
 					@synchronized(_renewUntilResponseCallbacks) {
@@ -264,17 +270,24 @@
 
 #pragma mark - Token API
 
-+(void)performTokenURLRequestTo:(NSURL*)url params:(NSDictionary*)params completion:(RNSpotifyCompletion<NSDictionary*>*)completion {
-	NSString* body = [RNSpotifyUtils makeQueryString:params];
++(void)performTokenURLRequestTo:(NSURL*)url authorization:(NSString*)authorization params:(NSDictionary*)params completion:(RNSpotifyCompletion<NSDictionary*>*)completion {
+  NSString* body = [RNSpotifyUtils makeJSONBody:params];
 	NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:url];
 	request.HTTPMethod = @"POST";
-	request.HTTPBody = [body dataUsingEncoding:NSUTF8StringEncoding];
+	request.HTTPBody = body;
+
+	if(authorization != nil) {
+    [request setValue:authorization forHTTPHeaderField:@"Authorization"];
+	}
+
+  [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+
 	NSURLSessionDataTask* dataTask = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData* data, NSURLResponse* response, NSError* error) {
 		if(error != nil) {
 			[completion reject:[RNSpotifyError httpErrorForStatusCode:0 message:error.localizedDescription]];
 			return;
 		}
-		
+
 		NSDictionary* responseObj = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
 		if(error != nil) {
 			[completion reject:[RNSpotifyError errorWithCodeObj:RNSpotifyErrorCode.BadResponse message:error.localizedDescription]];
@@ -290,17 +303,19 @@
 	[dataTask resume];
 }
 
-+(void)swapCodeForToken:(NSString*)code url:(NSURL*)url completion:(RNSpotifyCompletion<RNSpotifySessionData*>*)completion {
++(void)swapCodeForToken:(NSString*)code url:(NSURL*)url authorization:(NSString*)authorization redirectURL:(NSURL*)redirectURL completion:(RNSpotifyCompletion<RNSpotifySessionData*>*)completion {
 	NSDictionary* params = @{
-		@"code": code
+		@"code": code,
+		@"redirect_uri": redirectURL,
 	};
-	[self.class performTokenURLRequestTo:url params:params completion:[RNSpotifyCompletion onReject:^(RNSpotifyError* error) {
+	[self.class performTokenURLRequestTo:url authorization:authorization params:params completion:[RNSpotifyCompletion onReject:^(RNSpotifyError* error) {
 		[completion reject:error];
 	} onResolve:^(NSDictionary* result) {
-		NSString* accessToken = result[@"access_token"];
-		NSString* refreshToken = result[@"refresh_token"];
-		NSNumber* expireSeconds = result[@"expires_in"];
-		NSString* scope = result[@"scope"];
+		NSDictionary* data = result[@"data"];
+		NSString* accessToken = data[@"access_token"];
+		NSString* refreshToken = data[@"refresh_token"];
+		NSNumber* expireSeconds = data[@"expires_in"];
+		NSString* scope = data[@"scope"];
 		if(accessToken == nil || ![accessToken isKindOfClass:[NSString class]] || expireSeconds == nil || ![expireSeconds isKindOfClass:[NSNumber class]]) {
 			[completion reject:[RNSpotifyError errorWithCodeObj:RNSpotifyErrorCode.BadResponse message:@"Missing expected response parameters"]];
 			return;

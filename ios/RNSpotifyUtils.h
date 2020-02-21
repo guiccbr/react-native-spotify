@@ -10,6 +10,7 @@
 
 @interface RNSpotifyUtils : NSObject
 
++(NSString*)makeJSONBody:(NSDictionary*)params;
 +(NSString*)makeQueryString:(NSDictionary*)params;
 
 +(BOOL)isNull:(id)obj;

@@ -113,6 +113,7 @@
 	}
 	// tokenSwapURL
 	NSString* tokenSwapURLString = [RNSpotifyUtils getOption:@"tokenSwapURL" from:dict fallback:fallbackDict];
+	options.tokenSwapURLAuthorization = [RNSpotifyUtils getOption:@"tokenSwapURLAuthorization" from:dict fallback:fallbackDict];
 	if(tokenSwapURLString != nil) {
 		if(![tokenSwapURLString isKindOfClass:[NSString class]]) {
 			if(error != nil) {
@@ -132,6 +133,7 @@
 	}
 	// tokenRefreshURL
 	NSString* tokenRefreshURLString = [RNSpotifyUtils getOption:@"tokenRefreshURL" from:dict fallback:fallbackDict];
+	options.tokenRefreshURLAuthorization = [RNSpotifyUtils getOption:@"tokenRefreshURLAuthorization" from:dict fallback:fallbackDict];
 	if(tokenRefreshURLString != nil) {
 		if(![tokenRefreshURLString isKindOfClass:[NSString class]]) {
 			if(error != nil) {
@@ -162,7 +164,7 @@
 		params[@"show_dialog"] = showDialog.boolValue ? @"true" : @"false";
 	}
 	options.params = params;
-	
+
 	return options;
 }
 

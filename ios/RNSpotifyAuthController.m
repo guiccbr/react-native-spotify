@@ -181,7 +181,7 @@
 			[_completion reject:[RNSpotifyError missingOptionErrorForName:@"tokenSwapURL"]];
 			return;
 		}
-		[RNSpotifyAuth swapCodeForToken:params[@"code"] url:_options.tokenSwapURL completion:[RNSpotifyCompletion onReject:^(RNSpotifyError *error) {
+		[RNSpotifyAuth swapCodeForToken:params[@"code"] url:_options.tokenSwapURL authorization:_options.tokenSwapURLAuthorization redirectURL:_options.redirectURL completion:[RNSpotifyCompletion onReject:^(RNSpotifyError *error) {
 			dispatch_async(dispatch_get_main_queue(), ^{
 				[_completion reject:error];
 			});
