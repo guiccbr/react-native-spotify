@@ -14,7 +14,9 @@ public class LoginOptions {
 	public String redirectURL = null;
 	public String[] scopes = null;
 	public String tokenSwapURL = null;
+	public String tokenSwapURLAuthorization = null;
 	public String tokenRefreshURL = null;
+	public String tokenRefreshURLAuthorization = null;
 	public HashMap<String,String> params = null;
 
 
@@ -68,9 +70,13 @@ public class LoginOptions {
 		// tokenSwapURL
 		Dynamic tokenSwapURL = Utils.getOption("tokenSwapURL", dict, fallback);
 		options.tokenSwapURL = (tokenSwapURL != null) ? tokenSwapURL.asString() : null;
+		Dynamic tokenSwapURLAuthorization = Utils.getOption("tokenSwapURLAuthorization", dict, fallback);
+		options.tokenSwapURLAuthorization = (tokenSwapURLAuthorization != null) ? tokenSwapURLAuthorization.asString() : null;
 		// tokenRefreshURL
 		Dynamic tokenRefreshURL = Utils.getOption("tokenRefreshURL", dict, fallback);
 		options.tokenRefreshURL = (tokenRefreshURL != null) ? tokenRefreshURL.asString() : null;
+		Dynamic tokenRefreshURLAuthorization = Utils.getOption("tokenRefreshURLAuthorization", dict, fallback);
+		options.tokenRefreshURLAuthorization = (tokenRefreshURLAuthorization != null) ? tokenRefreshURLAuthorization.asString() : null;
 		// params
 		HashMap<String,String> params = new HashMap<>();
 		Dynamic showDialog = Utils.getOption("showDialog", dict, fallback);

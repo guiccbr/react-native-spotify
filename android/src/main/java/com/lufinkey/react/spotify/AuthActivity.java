@@ -3,6 +3,7 @@ package com.lufinkey.react.spotify;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
@@ -105,7 +106,7 @@ public class AuthActivity extends Activity
 						return;
 					}
 					final AuthActivity authActivity = this;
-					Auth.swapCodeForToken(response.getCode(), options.tokenSwapURL, new Completion<SessionData>() {
+					Auth.swapCodeForToken(response.getCode(), options.tokenSwapURL, options.tokenSwapURLAuthorization, options.redirectURL, new Completion<SessionData>() {
 						@Override
 						public void onReject(SpotifyError error) {
 							listener.onAuthActivityFailure(authActivity, error);

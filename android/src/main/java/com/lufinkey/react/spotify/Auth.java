@@ -28,6 +28,8 @@ public class Auth
 
 	private String clientID = null;
 	private String tokenRefreshURL = null;
+	private String tokenRefreshURLAuthorization = null;
+	private String redirectURL = null;
 
 	private SessionData session = null;
 
@@ -42,6 +44,14 @@ public class Auth
 
 	public String getTokenRefreshURL() {
 		return tokenRefreshURL;
+	}
+
+	public String getTokenRefreshURLAuthorization() {
+		return tokenRefreshURLAuthorization;
+	}
+
+	public String getRedirectURL() {
+		return redirectURL;
 	}
 
 	public SessionData getSession() {
@@ -60,6 +70,8 @@ public class Auth
 		if(session != null) {
 			clientID = options.clientID;
 			tokenRefreshURL = options.tokenRefreshURL;
+			tokenRefreshURLAuthorization = options.tokenRefreshURLAuthorization;
+			redirectURL = options.redirectURL;
 		}
 	}
 
@@ -82,6 +94,8 @@ public class Auth
 		this.session = session;
 		clientID = options.clientID;
 		tokenRefreshURL = options.tokenRefreshURL;
+		tokenRefreshURLAuthorization = options.tokenRefreshURLAuthorization;
+		redirectURL = options.redirectURL;
 		save();
 	}
 
@@ -90,6 +104,8 @@ public class Auth
 		session = null;
 		clientID = null;
 		tokenRefreshURL = null;
+		tokenRefreshURLAuthorization = null;
+		redirectURL = null;
 		save();
 	}
 
@@ -217,9 +233,12 @@ public class Auth
 		// create request body
 		WritableMap params = Arguments.createMap();
 		params.putString("refresh_token", session.refreshToken);
+		if (redirectURL!=null) {
+			params.putString("redirect_uri", redirectURL);
+		}
 
 		// perform token refresh
-		performTokenURLRequest(tokenRefreshURL, Utils.makeQueryString(params), new Completion<JSONObject>() {
+		performTokenURLRequest(tokenRefreshURL, tokenRefreshURLAuthorization, Utils.makeJsonBody(params), new Completion<JSONObject>() {
 			@Override
 			public void onComplete(JSONObject response, SpotifyError error)
 			{
@@ -229,8 +248,9 @@ public class Auth
 				boolean renewed = false;
 				if(error == null && session != null && session.refreshToken != null) {
 					try {
-						String newAccessToken = response.getString("access_token");
-						int newExpireTime = response.getInt("expires_in");
+						JSONObject data = (JSONObject)Utils.getObject("data", response);
+						String newAccessToken = data.getString("access_token");
+						int newExpireTime = data.getInt("expires_in");
 						if(session.accessToken != null) {
 							session.accessToken = newAccessToken;
 							session.expireDate = SessionData.getExpireDate(newExpireTime);
@@ -309,8 +329,15 @@ public class Auth
 
 
 
-	public static void performTokenURLRequest(String url, String body, final Completion<JSONObject> completion) {
-		Utils.doHTTPRequest(url, "POST", null, (body!=null ? body.getBytes() : null), new Completion<NetworkResponse>() {
+	public static void performTokenURLRequest(String url, String authorization, String body, final Completion<JSONObject> completion) {
+		HashMap<String, String> headers = null;
+		if (authorization!=null) {
+			headers = new HashMap<String, String>();
+			headers.put("Authorization", authorization);
+		}
+		headers.put("Content-Type", "application/json");
+
+		Utils.doHTTPRequest(url, "POST", headers, (body!=null ? body.getBytes() : null), new Completion<NetworkResponse>() {
 			@Override
 			public void onComplete(NetworkResponse response, SpotifyError error)
 			{
@@ -346,11 +373,14 @@ public class Auth
 		});
 	}
 
-	public static void swapCodeForToken(String code, String url, final Completion<SessionData> completion) {
+	public static void swapCodeForToken(String code, String url, String authorization, String redirectURL, final Completion<SessionData> completion) {
 		WritableMap params = Arguments.createMap();
 		params.putString("code", code);
+		if (redirectURL!=null) {
+			params.putString("redirect_uri", redirectURL);
+		}
 
-		performTokenURLRequest(url, Utils.makeQueryString(params), new Completion<JSONObject>() {
+		performTokenURLRequest(url, authorization, Utils.makeJsonBody(params), new Completion<JSONObject>() {
 			@Override
 			public void onReject(SpotifyError error) {
 				completion.reject(error);
@@ -358,10 +388,11 @@ public class Auth
 
 			@Override
 			public void onResolve(JSONObject response) {
-				String accessToken = (String)Utils.getObject("access_token", response);
-				Integer expireSeconds = (Integer)Utils.getObject("expires_in", response);
-				String refreshToken = (String)Utils.getObject("refresh_token", response);
-				String scope = (String)Utils.getObject("scope", response);
+				JSONObject data = (JSONObject)Utils.getObject("data", response);
+				String accessToken = (String)Utils.getObject("access_token", data);
+				Integer expireSeconds = (Integer)Utils.getObject("expires_in", data);
+				String refreshToken = (String)Utils.getObject("refresh_token", data);
+				String scope = (String)Utils.getObject("scope", data);
 				if(accessToken == null || !(accessToken instanceof String) || expireSeconds == null || !(expireSeconds instanceof Integer)) {
 					completion.reject(new SpotifyError(SpotifyError.Code.BadResponse, "Missing expected response parameters"));
 					return;

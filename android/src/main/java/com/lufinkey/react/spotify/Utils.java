@@ -32,6 +32,11 @@ public class Utils
 		return makeQueryString(map);
 	}
 
+	public static String makeJsonBody(ReadableMap params) {
+	 JSONObject json = new JSONObject(params.toHashMap());
+	 return json.toString();
+	}
+
 	public static String makeQueryString(HashMap<String,Object> params) {
 		String query = "";
 		boolean firstArg = true;
