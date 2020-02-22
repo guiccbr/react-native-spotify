@@ -11,7 +11,6 @@ import java.util.HashMap;
 
 public class LoginOptions {
 	public String clientID = null;
-	public String clientSecret = null;
 	public String redirectURL = null;
 	public String[] scopes = null;
 	public String tokenSwapURL = null;
@@ -21,7 +20,7 @@ public class LoginOptions {
 
 	AuthenticationRequest getAuthenticationRequest(String state) {
 		AuthenticationResponse.Type responseType = AuthenticationResponse.Type.TOKEN;
-		if(tokenSwapURL != null || clientSecret != null) {
+		if(tokenSwapURL != null) {
 			responseType = AuthenticationResponse.Type.CODE;
 		}
 		AuthenticationRequest.Builder requestBuilder = new AuthenticationRequest.Builder(clientID, responseType, redirectURL);
@@ -69,9 +68,6 @@ public class LoginOptions {
 		// tokenSwapURL
 		Dynamic tokenSwapURL = Utils.getOption("tokenSwapURL", dict, fallback);
 		options.tokenSwapURL = (tokenSwapURL != null) ? tokenSwapURL.asString() : null;
-		// clientSecret
-		Dynamic clientSecret = Utils.getOption("clientSecret", dict, fallback);
-		options.clientSecret = (clientSecret != null) ? clientSecret.asString() : null;
 		// tokenRefreshURL
 		Dynamic tokenRefreshURL = Utils.getOption("tokenRefreshURL", dict, fallback);
 		options.tokenRefreshURL = (tokenRefreshURL != null) ? tokenRefreshURL.asString() : null;

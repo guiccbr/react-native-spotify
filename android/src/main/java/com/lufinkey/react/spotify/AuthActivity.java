@@ -100,12 +100,12 @@ public class AuthActivity extends Activity
 						listener.onAuthActivityFailure(this, new SpotifyError("state_mismatch", "state mismatch"));
 						return;
 					}*/
-					if(options.tokenSwapURL == null && options.clientSecret == null) {
+					if(options.tokenSwapURL == null) {
 						listener.onAuthActivityFailure(this, SpotifyError.getMissingOptionError("tokenSwapURL"));
 						return;
 					}
 					final AuthActivity authActivity = this;
-					Auth.swapCodeForToken(response.getCode(), options.tokenSwapURL, options.clientSecret, options.clientID, options.redirectURL, new Completion<SessionData>() {
+					Auth.swapCodeForToken(response.getCode(), options.tokenSwapURL, new Completion<SessionData>() {
 						@Override
 						public void onReject(SpotifyError error) {
 							listener.onAuthActivityFailure(authActivity, error);
