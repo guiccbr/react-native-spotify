@@ -10,8 +10,6 @@
 #import "RNSpotifyUtils.h"
 #import "HelperMacros.h"
 
-#define SPOTIFY_TOKEN_URL @"https://accounts.spotify.com/api/token/"
-
 @interface RNSpotifyAuth() {
 	BOOL _renewingSession;
 	BOOL _retryRenewalUntilResponse;
@@ -43,7 +41,6 @@
 	if(_session != nil) {
 		_clientID = options.clientID;
 		_tokenRefreshURL = options.tokenRefreshURL;
-		_clientSecret = options.clientSecret;
 	}
 }
 
@@ -63,7 +60,6 @@
 -(void)startSession:(RNSpotifySessionData*)session options:(RNSpotifyLoginOptions*)options {
 	_session = session;
 	_clientID = options.clientID;
-	_clientSecret = options.clientSecret;
 	_tokenRefreshURL = options.tokenRefreshURL;
 	[self save];
 }
@@ -71,7 +67,6 @@
 -(void)clearSession {
 	_session = nil;
 	_clientID = nil;
-	_clientSecret = nil;
 	_tokenRefreshURL = nil;
 	[self save];
 }
@@ -98,7 +93,7 @@
 }
 
 -(BOOL)canRefreshSession {
-	if(_session != nil && _session.refreshToken != nil && (_tokenRefreshURL != nil || _clientSecret != nil)) {
+	if(_session != nil && _session.refreshToken != nil && _tokenRefreshURL != nil) {
 		return YES;
 	}
 	return NO;
@@ -177,21 +172,14 @@
 			return;
 		}
 		_renewingSession = true;
-
-		NSMutableDictionary* params = [[NSMutableDictionary alloc] init];
-		NSURL* finalUrl = _tokenRefreshURL;
-		NSDictionary *headers = nil;
-		if (_tokenRefreshURL == nil) {
-			finalUrl = [NSURL URLWithString:SPOTIFY_TOKEN_URL];
-			[params setObject:@"refresh_token" forKey:@"grant_type"];
-			headers = @{
-				@"Authorization": [self.class getAuthorizationHeader:_clientSecret clientID:_clientID]
-			};
-		}
-		[params setObject:_session.refreshToken forKey:@"refresh_token"];
-
+		
+		// create request body
+		NSDictionary* params = @{
+			@"refresh_token": _session.refreshToken
+		};
+		
 		// perform token refresh
-		[self.class performTokenURLRequestTo:finalUrl params:params headers:headers completion:[RNSpotifyCompletion onComplete:^(NSDictionary* result, RNSpotifyError* requestError) {
+		[self.class performTokenURLRequestTo:_tokenRefreshURL params:params completion:[RNSpotifyCompletion onComplete:^(NSDictionary* result, RNSpotifyError* requestError) {
 			dispatch_async(dispatch_get_main_queue(), ^{
 				RNSpotifyError* error = requestError;
 				_renewingSession = NO;
@@ -276,16 +264,11 @@
 
 #pragma mark - Token API
 
-+(void)performTokenURLRequestTo:(NSURL*)url params:(NSDictionary*)params headers:(NSDictionary*)headers completion:(RNSpotifyCompletion<NSDictionary*>*)completion {
++(void)performTokenURLRequestTo:(NSURL*)url params:(NSDictionary*)params completion:(RNSpotifyCompletion<NSDictionary*>*)completion {
 	NSString* body = [RNSpotifyUtils makeQueryString:params];
 	NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:url];
 	request.HTTPMethod = @"POST";
 	request.HTTPBody = [body dataUsingEncoding:NSUTF8StringEncoding];
-	if (headers != nil) {
-		[headers enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-			[request addValue: obj forHTTPHeaderField: key];
-		}];
-	}
 	NSURLSessionDataTask* dataTask = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData* data, NSURLResponse* response, NSError* error) {
 		if(error != nil) {
 			[completion reject:[RNSpotifyError httpErrorForStatusCode:0 message:error.localizedDescription]];
@@ -307,27 +290,11 @@
 	[dataTask resume];
 }
 
-+(NSString *)getAuthorizationHeader:(NSString *)clientSecret clientID:(NSString *)clientID {
-	NSString* encoded = [[[NSString stringWithFormat:@"%@:%@", clientID, clientSecret] dataUsingEncoding:NSUTF8StringEncoding] base64EncodedStringWithOptions:0];
-	return [NSString stringWithFormat:@"%@ %@", @"Basic", encoded];
-}
-
-+(void)swapCodeForToken:(NSString*)code url:(NSURL*)url clientSecret:(NSString *)clientSecret clientID:(NSString *)clientID redirectURL:(NSURL*)redirectURL completion:(RNSpotifyCompletion<RNSpotifySessionData*>*)completion {
-	NSMutableDictionary* params = [[NSMutableDictionary alloc] init];
-
-	NSURL* finalUrl = url;
-	NSDictionary *headers = nil;
-	if (url == nil) {
-		[params setObject:@"authorization_code" forKey:@"grant_type"];
-		[params setObject:redirectURL.absoluteString forKey:@"redirect_uri"];
-		finalUrl = [NSURL URLWithString:SPOTIFY_TOKEN_URL];
-		headers = @{
-			@"Authorization": [self.class getAuthorizationHeader:clientSecret clientID:clientID]
-		};
-	}
-	[params setObject:code forKey:@"code"];
-
-	[self.class performTokenURLRequestTo:finalUrl params:params headers:headers completion:[RNSpotifyCompletion onReject:^(RNSpotifyError* error) {
++(void)swapCodeForToken:(NSString*)code url:(NSURL*)url completion:(RNSpotifyCompletion<RNSpotifySessionData*>*)completion {
+	NSDictionary* params = @{
+		@"code": code
+	};
+	[self.class performTokenURLRequestTo:url params:params completion:[RNSpotifyCompletion onReject:^(RNSpotifyError* error) {
 		[completion reject:error];
 	} onResolve:^(NSDictionary* result) {
 		NSString* accessToken = result[@"access_token"];

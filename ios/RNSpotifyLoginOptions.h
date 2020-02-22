@@ -11,7 +11,6 @@
 
 @interface RNSpotifyLoginOptions : NSObject
 @property (nonatomic) NSString* clientID;
-@property (nonatomic) NSString* clientSecret;
 @property (nonatomic) NSURL* redirectURL;
 @property (nonatomic) NSArray<NSString*>* scopes;
 @property (nonatomic) NSURL* tokenSwapURL;
