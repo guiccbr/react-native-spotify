@@ -352,6 +352,10 @@ public class Auth
 						completion.reject(new SpotifyError(responseObj.getString("error"), responseObj.getString("error_description")));
 						return;
 					}
+					if(responseObj.has("errors")) {
+						completion.reject(new SpotifyError(SpotifyError.Code.GENERIC, responseObj.getString("errors")));
+						return;
+					}
 
 					completion.resolve(responseObj);
 				}
@@ -388,11 +392,15 @@ public class Auth
 
 			@Override
 			public void onResolve(JSONObject response) {
-				JSONObject data = (JSONObject)Utils.getObject("data", response);
-				String accessToken = (String)Utils.getObject("access_token", data);
-				Integer expireSeconds = (Integer)Utils.getObject("expires_in", data);
-				String refreshToken = (String)Utils.getObject("refresh_token", data);
-				String scope = (String)Utils.getObject("scope", data);
+				try {
+					JSONObject data = (JSONObject)Utils.getObject("data", response);
+					String accessToken = (String)Utils.getObject("access_token", data);
+					Integer expireSeconds = (Integer)Utils.getObject("expires_in", data);
+					String refreshToken = (String)Utils.getObject("refresh_token", data);
+					String scope = (String)Utils.getObject("scope", data);
+				} catch {
+					accessToken = null;
+				}
 				if(accessToken == null || !(accessToken instanceof String) || expireSeconds == null || !(expireSeconds instanceof Integer)) {
 					completion.reject(new SpotifyError(SpotifyError.Code.BadResponse, "Missing expected response parameters"));
 					return;

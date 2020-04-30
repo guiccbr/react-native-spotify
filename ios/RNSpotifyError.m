@@ -35,6 +35,7 @@ DEFINE_SPOTIFY_ERROR_CODE(ConflictingCallbacks, @"You cannot call this function 
 DEFINE_SPOTIFY_ERROR_CODE(BadResponse, @"Invalid response format")
 DEFINE_SPOTIFY_ERROR_CODE(PlayerNotReady, @"Player is not ready")
 DEFINE_SPOTIFY_ERROR_CODE(SessionExpired, @"Your login session has expired")
+DEFINE_SPOTIFY_ERROR_CODE(Generic, @"Generic error")
 
 #undef DEFINE_SPOTIFY_ERROR_CODE
 

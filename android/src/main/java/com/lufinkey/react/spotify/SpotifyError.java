@@ -19,7 +19,8 @@ public class SpotifyError extends Throwable
 		ConflictingCallbacks("You cannot call this function while it is already executing"),
 		BadResponse("Invalid response format"),
 		PlayerNotReady("Player is not ready"),
-		SessionExpired("Your login session has expired");
+		SessionExpired("Your login session has expired"),
+		Generic("Generic");
 
 		public final String description;
 
