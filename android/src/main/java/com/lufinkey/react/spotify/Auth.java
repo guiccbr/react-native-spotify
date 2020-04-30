@@ -352,6 +352,10 @@ public class Auth
 						completion.reject(new SpotifyError(responseObj.getString("error"), responseObj.getString("error_description")));
 						return;
 					}
+					if(responseObj.has("errors")) {
+						completion.reject(new SpotifyError(SpotifyError.Code.Generic, responseObj.getString("errors")));
+						return;
+					}
 
 					completion.resolve(responseObj);
 				}
@@ -388,25 +392,33 @@ public class Auth
 
 			@Override
 			public void onResolve(JSONObject response) {
-				JSONObject data = (JSONObject)Utils.getObject("data", response);
-				String accessToken = (String)Utils.getObject("access_token", data);
-				Integer expireSeconds = (Integer)Utils.getObject("expires_in", data);
-				String refreshToken = (String)Utils.getObject("refresh_token", data);
-				String scope = (String)Utils.getObject("scope", data);
-				if(accessToken == null || !(accessToken instanceof String) || expireSeconds == null || !(expireSeconds instanceof Integer)) {
+				try {
+					JSONObject data = (JSONObject)Utils.getObject("data", response);
+					String accessToken = (String)Utils.getObject("access_token", data);
+					Integer expireSeconds = (Integer)Utils.getObject("expires_in", data);
+					String refreshToken = (String)Utils.getObject("refresh_token", data);
+					String scope = (String)Utils.getObject("scope", data);
+
+					if(accessToken == null || !(accessToken instanceof String) || expireSeconds == null || !(expireSeconds instanceof Integer)) {
+						completion.reject(new SpotifyError(SpotifyError.Code.BadResponse, "Missing expected response parameters"));
+						return;
+					}
+
+					String[] scopes = null;
+					if(scope != null) {
+						scopes = scope.split(" ");
+					}
+
+					SessionData session = new SessionData();
+					session.accessToken = accessToken;
+					session.expireDate = SessionData.getExpireDate(expireSeconds);
+					session.refreshToken = refreshToken;
+					session.scopes = scopes;
+					completion.resolve(session);
+				} catch (Exception e) {
 					completion.reject(new SpotifyError(SpotifyError.Code.BadResponse, "Missing expected response parameters"));
 					return;
 				}
-				String[] scopes = null;
-				if(scope != null) {
-					scopes = scope.split(" ");
-				}
-				SessionData session = new SessionData();
-				session.accessToken = accessToken;
-				session.expireDate = SessionData.getExpireDate(expireSeconds);
-				session.refreshToken = refreshToken;
-				session.scopes = scopes;
-				completion.resolve(session);
 			}
 		});
 	}
