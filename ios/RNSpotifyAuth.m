@@ -298,6 +298,17 @@
 			[completion reject:[RNSpotifyError errorWithCode:errorCode message:responseObj[@"error_description"]]];
 			return;
 		}
+		NSArray* errors = responseObj[@"errors"];
+		if(errors != nil && ![errors isKindOfClass:[NSNull class]]) {
+		  NSData *errorsJSON = [NSJSONSerialization dataWithJSONObject:errors options:0 error:&error];
+			if (error != nil) {
+				[completion reject:[RNSpotifyError errorWithCodeObj:RNSpotifyErrorCode.BadResponse message:error.localizedDescription]];
+				return;
+			}
+      NSString* errorsJSONString = [[NSString alloc] initWithData:errorsJSON encoding:NSUTF8StringEncoding];
+			[completion reject:[RNSpotifyError errorWithCodeObj:RNSpotifyErrorCode.Generic message:errorsJSONString]];
+			return;
+		}
 		[completion resolve:responseObj];
 	}];
 	[dataTask resume];
