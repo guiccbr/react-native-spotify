@@ -352,6 +352,10 @@ public class Auth
 						completion.reject(new SpotifyError(responseObj.getString("error"), responseObj.getString("error_description")));
 						return;
 					}
+					if(responseObj.has("errors")) {
+						completion.reject(new SpotifyError("GENERIC", responseObj.getString("errors")));
+						return;
+					}
 
 					completion.resolve(responseObj);
 				}
