@@ -233,11 +233,9 @@ RCT_EXPORT_METHOD(initialize:(NSDictionary*)options resolve:(RCTPromiseResolveBl
 	if(_loggedIn) {
 		[self sendEvent:@"login" args:@[[RNSpotifyConvert RNSpotifySessionData:_auth.session]]];
 	}
-	
+
 	[self logBackInIfNeeded:[RNSpotifyCompletion<NSNumber*> onComplete:^(NSNumber* loggedIn, RNSpotifyError* error) {
-		if(loggedIn != nil && loggedIn.boolValue && [[self isLoggedIn] boolValue]) {
-			[self startAuthRenewalTimer];
-		}
+		// done
 	}] waitForDefinitiveResponse:YES];
 }
 
@@ -359,11 +357,6 @@ RCT_EXPORT_METHOD(isInitializedAsync:(RCTPromiseResolveBlock)resolve reject:(RCT
 
 RCT_EXPORT_METHOD(renewSession:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
 	[self renewSession:[RNSpotifyCompletion onResolve:^(NSNumber* renewed) {
-		// ensure we're logged in
-		if(_loggedIn && renewed.boolValue) {
-			// reschedule the timer
-			[self scheduleAuthRenewalTimer];
-		}
 		resolve(renewed);
 	} onReject:^(RNSpotifyError* error) {
 		[error reject:reject];
@@ -599,7 +592,6 @@ RCT_EXPORT_METHOD(login:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)r
 								if(_loggedIn) {
 									[self sendEvent:@"login" args:@[[RNSpotifyConvert RNSpotifySessionData:_auth.session]]];
 								}
-								[self startAuthRenewalTimer];
 							}
 						}];
 					});

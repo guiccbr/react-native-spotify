@@ -209,9 +209,7 @@ public class RNSpotifyModule extends ReactContextBaseJavaModule implements Playe
 		logBackInIfNeeded(new Completion<Boolean>() {
 			@Override
 			public void onComplete(Boolean loggedIn, SpotifyError error) {
-				if(loggedIn != null && loggedIn) {
-					startAuthRenewalTimer();
-				}
+				// Done
 			}
 		}, true);
 	}
@@ -340,11 +338,6 @@ public class RNSpotifyModule extends ReactContextBaseJavaModule implements Playe
 		renewSession(new Completion<Boolean>() {
 			@Override
 			public void onResolve(Boolean renewed) {
-				// ensure the timer has not been stopped
-				if(authRenewalTimer != null && renewed) {
-					// reschedule the timer
-					scheduleAuthRenewalTimer();
-				}
 				promise.resolve(renewed);
 			}
 
@@ -702,7 +695,6 @@ public class RNSpotifyModule extends ReactContextBaseJavaModule implements Playe
 									if (loggedIn) {
 										sendEvent("login", Convert.fromSessionData(auth.getSession()));
 									}
-									startAuthRenewalTimer();
 								}
 							}
 						});
